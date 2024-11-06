@@ -1,1 +1,1 @@
-Hi, Ganblers :)
+Hi, Gamblers :)
