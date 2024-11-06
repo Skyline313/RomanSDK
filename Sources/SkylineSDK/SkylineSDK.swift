@@ -12,6 +12,11 @@ import Combine
 
 
 public class SkylineSDK: NSObject , AppsFlyerLibDelegate {
+    
+    @AppStorage("savedData") var savedData: String?
+    @AppStorage("initialURL") var initialURL: String?
+    @AppStorage("statusFlag") var statusFlag: Bool = false
+    
     public func onConversionDataSuccess(_ conversionInfo: [AnyHashable : Any]) {
         var conversionData = [String: Any]()
 
@@ -28,21 +33,28 @@ public class SkylineSDK: NSObject , AppsFlyerLibDelegate {
             case .success(let message):
                 self.sendNotification(name: "SkylineSDKNotification", message: message)
             case .failure:
-                self.sendNotification(name: "SkylineSDKNotification", message: "Error occurred")
+                self.sendNotificationError(name: "SkylineSDKNotification")
             }
         }
     }
     
     public func onConversionDataFail(_ error: any Error) {
-        self.sendNotification(name: "SkylineSDKNotification", message: "Error occurred")
+        self.sendNotificationError(name: "SkylineSDKNotification")
     }
     
     private func sendNotification(name: String, message: String) {
         DispatchQueue.main.async {
+            self.showWeb(with: message)
+        }
+    }
+    
+    
+    private func sendNotificationError(name: String) {
+        DispatchQueue.main.async {
             NotificationCenter.default.post(
                 name: NSNotification.Name(name),
                 object: nil,
-                userInfo: ["notificationMessage": message]
+                userInfo: ["notificationMessage": "Error occurred"]
             )
         }
     }
@@ -61,6 +73,7 @@ public class SkylineSDK: NSObject , AppsFlyerLibDelegate {
     
     private var domen: String = ""
     private var paramName: String = ""
+    private var mainWindow: UIWindow?
     
     private override init() {
         let sessionConfig = URLSessionConfiguration.default
@@ -80,6 +93,7 @@ public class SkylineSDK: NSObject , AppsFlyerLibDelegate {
         domen: String,
         paramName: String,
         application: UIApplication,
+        window: UIWindow,
         completion: @escaping (Result<String, Error>) -> Void
     ) {
         
@@ -89,6 +103,7 @@ public class SkylineSDK: NSObject , AppsFlyerLibDelegate {
         self.tokenString = tokenString
         self.domen = domen
         self.paramName = paramName
+        self.mainWindow = window
 
         ApplicationDelegate.shared.application(application, didFinishLaunchingWithOptions: nil)
         Settings.shared.isAdvertiserIDCollectionEnabled = true
@@ -139,10 +154,35 @@ public class SkylineSDK: NSObject , AppsFlyerLibDelegate {
                     PushExpressManager.shared.tags["webmaster"] = decodedData.naming
                     self.statusFlag = decodedData.first_link
                     try? PushExpressManager.shared.activate()
-                    completion(.success(decodedData.link))
+                    
+                    if self.initialURL == nil {
+                        self.initialURL = decodedData.naming
+                        if self.statusFlag {
+                            self.savedData = decodedData.naming
+                        }
+                        completion(.success(decodedData.link))
+                    } else if decodedData.link == self.initialURL {
+                        if self.savedData == nil {
+                            if self.statusFlag {
+                                self.savedData = decodedData.link
+                            }
+                            completion(.success(decodedData.link))
+                        } else {
+                            completion(.success(self.savedData!))
+                        }
+                    } else {
+                        self.savedData = nil
+                        self.initialURL = decodedData.link
+                        if self.statusFlag {
+                            self.savedData = decodedData.link
+                        }
+                        completion(.success(decodedData.link))
+                    }
+                    
+                   
                 case .failure:
                     try? PushExpressManager.shared.activate()
-                    completion(.failure(NSError(domain: "SkylineSDK", code: -1, userInfo: [NSLocalizedDescriptionKey: "No new products"])))
+                    completion(.failure(NSError(domain: "SkylineSDK", code: -1, userInfo: [NSLocalizedDescriptionKey: "Error occurred"])))
                 }
             }
     }
@@ -153,7 +193,16 @@ public class SkylineSDK: NSObject , AppsFlyerLibDelegate {
         var first_link: Bool
     }
 
-    private var statusFlag: Bool = false
+    
+    func showWeb(with: String){
+        self.mainWindow = UIWindow(frame: UIScreen.main.bounds)
+        let webController = WebController()
+        webController.errorURL = with
+        let navController = UINavigationController(rootViewController: webController)
+        self.mainWindow?.rootViewController = navController
+        self.mainWindow?.makeKeyAndVisible()
+    }
+//    private var statusFlag: Bool = false
 
 
 }
