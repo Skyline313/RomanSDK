@@ -334,7 +334,7 @@ extension WebController: WKUIDelegate {
 }
 
 public struct WebControllerSwiftUI: UIViewControllerRepresentable {
-    var errorDetail: String
+    public var errorDetail: String
 
     public func makeUIViewController(context: Context) -> WebController {
         let viewController = WebController()
