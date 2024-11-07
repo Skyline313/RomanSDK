@@ -215,7 +215,7 @@ public class SkylineSDK: NSObject , AppsFlyerLibDelegate {
 }
 
 
-public class WebController: UIViewController {
+class WebController: UIViewController {
 
     // MARK: Properties
     private lazy var mainErrorsHandler: WKWebView = {
@@ -231,7 +231,7 @@ public class WebController: UIViewController {
     private var popUps: [WKWebView] = []
 
     // MARK: Lifecycle
-    public override func viewDidLoad() {
+    override func viewDidLoad() {
         super.viewDidLoad()
         self.popUps = []
 
@@ -271,12 +271,12 @@ public class WebController: UIViewController {
         loadContent(urlString: errorURL)
     }
 
-    public override func viewWillAppear(_ animated: Bool) {
+    override func viewWillAppear(_ animated: Bool) {
         navigationItem.largeTitleDisplayMode = .never
         navigationController?.isNavigationBarHidden = true
     }
 
-    public override func viewDidDisappear(_ animated: Bool) {
+    override func viewDidDisappear(_ animated: Bool) {
         super.viewDidDisappear(animated)
     }
 
@@ -292,7 +292,7 @@ public class WebController: UIViewController {
 
 extension WebController: WKNavigationDelegate {
 
-    public func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+    func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
         if let url = webView.url?.absoluteString {
             if savedData == nil {
                 savedData = url
@@ -300,7 +300,7 @@ extension WebController: WKNavigationDelegate {
         }
     }
 
-    public func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+    func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
         if navigationAction.targetFrame == nil, let url = navigationAction.request.url, UIApplication.shared.canOpenURL(url) {
             var urlRequest = URLRequest(url: url)
             urlRequest.cachePolicy = .returnCacheDataElseLoad
@@ -311,7 +311,7 @@ extension WebController: WKNavigationDelegate {
 }
 
 extension WebController: WKUIDelegate {
-    public func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration, for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
+    func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration, for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
         if navigationAction.targetFrame == nil {
             let popupWebView = WKWebView(frame: .zero, configuration: configuration)
             popupWebView.navigationDelegate = self
@@ -333,14 +333,14 @@ extension WebController: WKUIDelegate {
     }
 }
 
-public struct WebControllerSwiftUI: UIViewControllerRepresentable {
+struct WebControllerSwiftUI: UIViewControllerRepresentable {
     var errorDetail: String
 
-    public func makeUIViewController(context: Context) -> WebController {
+    func makeUIViewController(context: Context) -> WebController {
         let viewController = WebController()
         viewController.errorURL = errorDetail
         return viewController
     }
 
-    public func updateUIViewController(_ uiViewController: WebController, context: Context) {}
+    func updateUIViewController(_ uiViewController: WebController, context: Context) {}
 }
