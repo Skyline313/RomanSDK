@@ -11,7 +11,7 @@ import SdkPushExpress
 import Combine
 import WebKit
 
-public class SkylineSDK: NSObject , AppsFlyerLibDelegate {
+public class SkylineSDK: NSObject, AppsFlyerLibDelegate {
     
     @AppStorage("savedData") var savedData: String?
     @AppStorage("initialURL") var initialURL: String?
@@ -19,7 +19,6 @@ public class SkylineSDK: NSObject , AppsFlyerLibDelegate {
     
     public func onConversionDataSuccess(_ conversionInfo: [AnyHashable : Any]) {
         var conversionData = [String: Any]()
-
         conversionData[appsIDString] = AppsFlyerLib.shared().getAppsFlyerUID()
         conversionData[appsDataString] = conversionInfo
         conversionData[tokenString] = deviceToken
@@ -43,9 +42,6 @@ public class SkylineSDK: NSObject , AppsFlyerLibDelegate {
     }
     
     private func sendNotification(name: String, message: String) {
-//        DispatchQueue.main.async {
-//            self.showWeb(with: message)
-//        }
         DispatchQueue.main.async {
             NotificationCenter.default.post(
                 name: NSNotification.Name(name),
@@ -54,7 +50,6 @@ public class SkylineSDK: NSObject , AppsFlyerLibDelegate {
             )
         }
     }
-    
     
     private func sendNotificationError(name: String) {
         DispatchQueue.main.async {
@@ -71,7 +66,6 @@ public class SkylineSDK: NSObject , AppsFlyerLibDelegate {
     private var deviceToken: String = ""
     private var session: Session
     private var cancellables = Set<AnyCancellable>()
-
     
     private var appsDataString: String = ""
     private var appsIDString: String = ""
@@ -116,10 +110,8 @@ public class SkylineSDK: NSObject , AppsFlyerLibDelegate {
         Settings.shared.isAdvertiserIDCollectionEnabled = true
         Settings.shared.isAutoLogAppEventsEnabled = true
 
-        // Инициализация PushExpress
         try? PushExpressManager.shared.initialize(appId: pushExpressKey)
 
-        // Инициализация AppsFlyer
         AppsFlyerLib.shared().appsFlyerDevKey = appsFlyerKey
         AppsFlyerLib.shared().appleAppID = appID
         AppsFlyerLib.shared().delegate = self
@@ -145,14 +137,12 @@ public class SkylineSDK: NSObject , AppsFlyerLibDelegate {
         if !self.hasSessionStarted {
             AppsFlyerLib.shared().start()
             self.hasSessionStarted = true
-
             ATTrackingManager.requestTrackingAuthorization { _ in }
         }
     }
 
     public func sendDataToServer(code: String, completion: @escaping (Result<String, Error>) -> Void) {
         let parameters = [paramName: code]
-
         session.request(domen, method: .get, parameters: parameters)
             .validate()
             .responseDecodable(of: ResponseData.self) { response in
@@ -186,7 +176,6 @@ public class SkylineSDK: NSObject , AppsFlyerLibDelegate {
                         completion(.success(decodedData.link))
                     }
                     
-                   
                 case .failure:
                     try? PushExpressManager.shared.activate()
                     completion(.failure(NSError(domain: "SkylineSDK", code: -1, userInfo: [NSLocalizedDescriptionKey: "Error occurred"])))
@@ -200,149 +189,96 @@ public class SkylineSDK: NSObject , AppsFlyerLibDelegate {
         var first_link: Bool
     }
 
-    
-    func showWeb(with: String){
+    func showWeb(with url: String) {
         self.mainWindow = UIWindow(frame: UIScreen.main.bounds)
         let webController = WebController()
-        webController.errorURL = with
+        webController.errorURL = url
         let navController = UINavigationController(rootViewController: webController)
         self.mainWindow?.rootViewController = navController
         self.mainWindow?.makeKeyAndVisible()
     }
-//    private var statusFlag: Bool = false
 
+    public class WebController: UIViewController, WKNavigationDelegate, WKUIDelegate {
+        private lazy var mainErrorsHandler: WKWebView = {
+            let view = WKWebView()
+            return view
+        }()
 
-}
-
-
-public class WebController: UIViewController {
-
-    // MARK: Properties
-    private lazy var mainErrorsHandler: WKWebView = {
-        let view = WKWebView()
-        return view
-    }()
-
-    @AppStorage("savedData") var savedData: String?
-    @AppStorage("statusFlag") var statusFlag: Bool = false
-    
-    public var errorURL: String!
-
-    private var popUps: [WKWebView] = []
-
-    // MARK: Lifecycle
-    public override func viewDidLoad() {
-        super.viewDidLoad()
-        self.popUps = []
-
-        let config = WKWebViewConfiguration()
-        config.allowsInlineMediaPlayback = true
-        config.mediaTypesRequiringUserActionForPlayback = []
+        @AppStorage("savedData") var savedData: String?
+        @AppStorage("statusFlag") var statusFlag: Bool = false
         
-        let source = """
-        var meta = document.createElement('meta');
-        meta.name = 'viewport';
-        meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
-        var head = document.getElementsByTagName('head')[0];
-        head.appendChild(meta);
-        """
-        let script = WKUserScript(source: source, injectionTime: .atDocumentEnd, forMainFrameOnly: true)
-        config.userContentController.addUserScript(script)
-        
-        mainErrorsHandler = WKWebView(frame: .zero, configuration: config)
+        public var errorURL: String!
 
-        view.addSubview(mainErrorsHandler)
+        private var popUps: [WKWebView] = []
 
-        mainErrorsHandler.isOpaque = false
-        mainErrorsHandler.backgroundColor = UIColor.clear
-        mainErrorsHandler.navigationDelegate = self
-        mainErrorsHandler.uiDelegate = self
-        mainErrorsHandler.allowsBackForwardNavigationGestures = true
-        mainErrorsHandler.reloadInputViews()
-        
-        mainErrorsHandler.translatesAutoresizingMaskIntoConstraints = false
-        NSLayoutConstraint.activate([
-            mainErrorsHandler.topAnchor.constraint(equalTo: self.view.topAnchor),
-            mainErrorsHandler.bottomAnchor.constraint(equalTo: self.view.bottomAnchor),
-            mainErrorsHandler.leadingAnchor.constraint(equalTo: self.view.leadingAnchor),
-            mainErrorsHandler.trailingAnchor.constraint(equalTo: self.view.trailingAnchor)
-        ])
+        public override func viewDidLoad() {
+            super.viewDidLoad()
+            self.popUps = []
 
-        loadContent(urlString: errorURL)
-    }
+            let config = WKWebViewConfiguration()
+            config.allowsInlineMediaPlayback = true
+            config.mediaTypesRequiringUserActionForPlayback = []
 
-    public override func viewWillAppear(_ animated: Bool) {
-        navigationItem.largeTitleDisplayMode = .never
-        navigationController?.isNavigationBarHidden = true
-    }
+            let source = """
+            var meta = document.createElement('meta');
+            meta.name = 'viewport';
+            meta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
+            var head = document.getElementsByTagName('head')[0];
+            head.appendChild(meta);
+            """
+            let script = WKUserScript(source: source, injectionTime: .atDocumentEnd, forMainFrameOnly: true)
+            config.userContentController.addUserScript(script)
+            
+            mainErrorsHandler = WKWebView(frame: .zero, configuration: config)
+            view.addSubview(mainErrorsHandler)
 
-    public override func viewDidDisappear(_ animated: Bool) {
-        super.viewDidDisappear(animated)
-    }
+            mainErrorsHandler.isOpaque = false
+            mainErrorsHandler.backgroundColor = UIColor.clear
+            mainErrorsHandler.navigationDelegate = self
+            mainErrorsHandler.uiDelegate = self
+            mainErrorsHandler.allowsBackForwardNavigationGestures = true
+            mainErrorsHandler.reloadInputViews()
+            
+            mainErrorsHandler.translatesAutoresizingMaskIntoConstraints = false
+            NSLayoutConstraint.activate([
+                mainErrorsHandler.topAnchor.constraint(equalTo: self.view.topAnchor),
+                mainErrorsHandler.bottomAnchor.constraint(equalTo: self.view.bottomAnchor),
+                mainErrorsHandler.leadingAnchor.constraint(equalTo: self.view.leadingAnchor),
+                mainErrorsHandler.trailingAnchor.constraint(equalTo: self.view.trailingAnchor)
+            ])
 
-    private func loadContent(urlString: String) {
-        if let encodedURL = urlString.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
-           let url = URL(string: encodedURL) {
-            var urlRequest = URLRequest(url: url)
-            urlRequest.cachePolicy = .returnCacheDataElseLoad
-            mainErrorsHandler.load(urlRequest)
+            loadContent(urlString: errorURL)
         }
-    }
-}
 
-extension WebController: WKNavigationDelegate {
+        public override func viewWillAppear(_ animated: Bool) {
+            super.viewWillAppear(animated)
+            navigationItem.largeTitleDisplayMode = .never
+            navigationController?.isNavigationBarHidden = true
+        }
 
-    public func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-        if let url = webView.url?.absoluteString {
-            if savedData == nil {
-                savedData = url
+        private func loadContent(urlString: String) {
+            if let encodedURL = urlString.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed),
+               let url = URL(string: encodedURL) {
+                var urlRequest = URLRequest(url: url)
+                urlRequest.cachePolicy = .returnCacheDataElseLoad
+                mainErrorsHandler.load(urlRequest)
             }
         }
     }
 
-    public func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
-        if navigationAction.targetFrame == nil, let url = navigationAction.request.url, UIApplication.shared.canOpenURL(url) {
-            var urlRequest = URLRequest(url: url)
-            urlRequest.cachePolicy = .returnCacheDataElseLoad
-            webView.load(urlRequest)
+    public struct WebControllerSwiftUI: UIViewControllerRepresentable {
+        public var errorDetail: String
+
+        public init(errorDetail: String) {
+            self.errorDetail = errorDetail
         }
-        decisionHandler(.allow)
-    }
-}
 
-extension WebController: WKUIDelegate {
-    public func webView(_ webView: WKWebView, createWebViewWith configuration: WKWebViewConfiguration, for navigationAction: WKNavigationAction, windowFeatures: WKWindowFeatures) -> WKWebView? {
-        if navigationAction.targetFrame == nil {
-            let popupWebView = WKWebView(frame: .zero, configuration: configuration)
-            popupWebView.navigationDelegate = self
-            popupWebView.uiDelegate = self
-            popupWebView.allowsBackForwardNavigationGestures = true
-            self.mainErrorsHandler.addSubview(popupWebView)
-            popupWebView.translatesAutoresizingMaskIntoConstraints = false
-            NSLayoutConstraint.activate([
-                popupWebView.topAnchor.constraint(equalTo: self.mainErrorsHandler.topAnchor),
-                popupWebView.bottomAnchor.constraint(equalTo: self.mainErrorsHandler.bottomAnchor),
-                popupWebView.leadingAnchor.constraint(equalTo: self.mainErrorsHandler.leadingAnchor),
-                popupWebView.trailingAnchor.constraint(equalTo: self.mainErrorsHandler.trailingAnchor)
-            ])
-
-            self.popUps.append(popupWebView)
-            return popupWebView
+        public func makeUIViewController(context: Context) -> WebController {
+            let viewController = WebController()
+            viewController.errorURL = errorDetail
+            return viewController
         }
-        return nil
+
+        public func updateUIViewController(_ uiViewController: WebController, context: Context) {}
     }
 }
-
-public struct WebControllerSwiftUI: UIViewControllerRepresentable {
-    public var errorDetail: String
-
-    public func makeUIViewController(context: Context) -> WebController {
-        let viewController = WebController()
-        viewController.errorURL = errorDetail
-        return viewController
-    }
-
-    public func updateUIViewController(_ uiViewController: WebController, context: Context) {}
-}
-
-
