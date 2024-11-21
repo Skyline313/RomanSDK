@@ -3,8 +3,6 @@ import UIKit
 import AppsFlyerLib
 import Alamofire
 import SwiftUI
-import FBSDKCoreKit
-import FBAEMKit
 import AppTrackingTransparency
 import AdSupport
 import SdkPushExpress
@@ -105,10 +103,6 @@ public class SkylineSDK: NSObject, AppsFlyerLibDelegate {
         self.domen = domen
         self.paramName = paramName
         self.mainWindow = window
-
-        ApplicationDelegate.shared.application(application, didFinishLaunchingWithOptions: nil)
-        Settings.shared.isAdvertiserIDCollectionEnabled = true
-        Settings.shared.isAutoLogAppEventsEnabled = true
 
         try? PushExpressManager.shared.initialize(appId: pushExpressKey)
 
